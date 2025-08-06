@@ -1,0 +1,101 @@
+refrences
+
+astra theme style guid
+1-https://cybernaira.com/astra-theme-style-guide/
+
+2-how to customize plugin 
+https://www.wpbeginner.com/wp-tutorials/how-to-create-a-wordpress-plugin/
+
+Astra Theme => https://wpastra.com/
+
+Contact Form 7 => https://wordpress.org/plugins/contact-form-7/
+
+Theme template inspiration => https://themewagon.github.io/ninestars/
+
+
+the Customize plugin code
+
+<?php
+/**
+ * Plugin Name: Portfolio Projects
+ * Description: Custom post type for projects in portfolio
+ * Author: Mohamed Ramadan
+ */
+
+// Register Custom Post Type: Projects
+function portfolio_register_projects_post_type() {
+    register_post_type('projects', array(
+        'labels' => array(
+            'name' => __('Projects'),
+            'singular_name' => __('Project')
+        ),
+        'public' => true,
+        'has_archive' => true,
+        'rewrite' => array('slug' => 'projects'),
+        'supports' => array('title', 'thumbnail'),
+        'show_in_rest' => true,
+    ));
+}
+add_action('init', 'portfolio_register_projects_post_type');
+
+// Add Meta Box for Client Name only
+function portfolio_add_client_meta_box() {
+    add_meta_box('project_client', 'Client Name', 'portfolio_client_meta_box_callback', 'projects', 'normal', 'default');
+}
+add_action('add_meta_boxes', 'portfolio_add_client_meta_box');
+
+// Meta Box Callback
+function portfolio_client_meta_box_callback($post) {
+    $client = get_post_meta($post->ID, '_client_name', true);
+    ?>
+    <p>
+        <label>Client Name:</label><br>
+        <input type="text" name="client_name" value="<?php echo esc_attr($client); ?>" style="width: 100%;" />
+    </p>
+    <?php
+}
+
+// Save Client Name
+function portfolio_save_client_meta_data($post_id) {
+    if (array_key_exists('client_name', $_POST)) {
+        update_post_meta($post_id, '_client_name', sanitize_text_field($_POST['client_name']));
+    }
+}
+add_action('save_post', 'portfolio_save_client_meta_data');
+
+
+
+// Display all projects
+function portfolio_display_projects_shortcode() {
+    $args = array(
+        'post_type' => 'projects',
+        'posts_per_page' => -1,
+    );
+
+    $query = new WP_Query($args);
+    $output = '<div class="portfolio-projects" style="display: grid; gap: 20px;">';
+
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $client = get_post_meta(get_the_ID(), '_client_name', true);
+            $output .= '<div class="project-card" style="border: 1px solid #ddd; padding: 15px;">';
+            if (has_post_thumbnail()) {
+                $output .= get_the_post_thumbnail(get_the_ID(), 'medium', ['style' => 'width:100%; height:auto;']);
+            }
+            $output .= '<h2>' . get_the_title() . '</h2>';
+            $output .= '<p><strong>Client:</strong> ' . esc_html($client) . '</p>';
+            $output .= '</div>';
+        }
+        wp_reset_postdata();
+    } else {
+        $output .= '<p>No projects found.</p>';
+    }
+
+    $output .= '</div>';
+    return $output;
+}
+add_shortcode('show_projects', 'portfolio_display_projects_shortcode');
+
+
+
